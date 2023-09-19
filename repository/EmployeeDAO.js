@@ -7,14 +7,14 @@ AWS.config.update({
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 // Create new employee
-function addEmployee(employee_id, user, pass, role = 'Employee') {
+function addEmployee(employee_id, username, password, role = 'Employee') {
 
     const params = {
         TableName: 'employees',
         Item: {
             employee_id,
-            user,
-            pass,
+            username,
+            password,
             role
         }
     }
@@ -22,6 +22,21 @@ function addEmployee(employee_id, user, pass, role = 'Employee') {
     return docClient.put(params).promise();
 }
 
+// Retreive an employee to log in
+function retrieveEmployee(username, password) {
+    const params = {
+        TableName: 'employees',
+        FilterExpression: 'username = :username AND password = :password',
+        ExpressionAttributeValues: {
+            ':username': username,
+            ':password': password
+        }
+    }
+
+    return docClient.scan(params).promise();
+}
+
 module.exports = {
-    addEmployee
+    addEmployee,
+    retrieveEmployee
 }

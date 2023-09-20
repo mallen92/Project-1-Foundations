@@ -7,7 +7,7 @@ AWS.config.update({
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 // Create new employee
-function addEmployee(employee_id, username, password, role = 'Employee') {
+function createEmployee(employee_id, username, password, role = 'Employee') {
 
     const params = {
         TableName: 'employees',
@@ -37,6 +37,6 @@ function retrieveEmployee(username, password) {
 }
 
 module.exports = {
-    addEmployee,
+    createEmployee,
     retrieveEmployee
 }

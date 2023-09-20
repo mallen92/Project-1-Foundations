@@ -3,6 +3,7 @@ const server = express();
 const bodyParser = require('body-parser');
 const uuid = require('uuid');
 const employeeDAO = require('./repository/EmployeeDAO');
+const ticketDAO = require('./repository/TicketDAO');
 const logger = require('./log');
 const PORT = 8000;
 
@@ -12,6 +13,16 @@ server.use(bodyParser.json());
 // Custom middleware
 const validateEmployeeCreds = (req, res, next) => {
     if(!req.body.username || !req.body.password){
+        req.body.valid = false;
+        next();
+    }else{
+        req.body.valid = true;
+        next();
+    }
+}
+
+const validateTicket = (req, res, next) => {
+    if(!req.body.employee_id || !req.body.description || !req.body.amount){
         req.body.valid = false;
         next();
     }else{
@@ -34,10 +45,10 @@ server.post('/register', validateEmployeeCreds, (req, res) => {
                     logger.error('Credentials for existing employee provided during employee registration.');
                 }
                 else {
-                    employeeDAO.addEmployee(uuid.v4(), body.username, body.password)
+                    employeeDAO.createEmployee(uuid.v4(), body.username, body.password)
                         .then(() => {
-                            res.send('Employee successfully registered!');
-                            logger.info('Employee successfully registered!');
+                            res.send('Ticket successfully created!');
+                            logger.info('Ticket successfully created!');
                         })
                         .catch((err) => {
                             res.send('Employee registration unsuccessful.');
@@ -48,7 +59,7 @@ server.post('/register', validateEmployeeCreds, (req, res) => {
     }
     else {
         res.send('Invalid item properties...');
-        logger.error('Invalid item properties provided for employee registration.');
+        logger.error('Invalid item properties provided during employee registration.');
     }
 });
 
@@ -75,7 +86,28 @@ server.post('/login', validateEmployeeCreds, (req, res) => {
     }
     else {
         res.send('Invalid item properties...');
-        logger.error('Invalid item properties provided for employee login.');
+        logger.error('Invalid item properties provided during employee login.');
+    }
+});
+
+// Create a ticket
+server.post('/tickets', validateTicket, (req, res) => {
+    const body = req.body;
+
+    if(req.body.valid) {
+        ticketDAO.createTicket(uuid.v4(), body.employee_id, body.description, body.amount)
+            .then(() => {
+                res.send('Ticket successfully created!');
+                logger.info('Ticket successfully created!');
+            })
+            .catch((err) => {
+                res.send('Ticket creation unsuccessful.');
+                logger.error('Ticket creation unsuccessful.');
+            })
+    }
+    else {
+        res.send('Invalid item properties...');
+        logger.error('Invalid item properties provided during ticket creation.');
     }
 });
 

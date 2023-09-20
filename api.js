@@ -21,11 +21,22 @@ const validateEmployeeCreds = (req, res, next) => {
     }
 }
 
-const validateTicket = (req, res, next) => {
+const validateTicketInfo = (req, res, next) => {
     if(!req.body.employee_id || !req.body.description || !req.body.amount){
         req.body.valid = false;
         next();
     }else{
+        req.body.valid = true;
+        next();
+    }
+}
+
+const validateTicketStatus = (req, res, next) => {
+    if(req.body.status !== "Approved" && req.body.status !== "Denied") {
+        req.body.valid = false;
+        next();
+    }
+    else {
         req.body.valid = true;
         next();
     }
@@ -37,7 +48,7 @@ const validateTicket = (req, res, next) => {
 server.post('/register', validateEmployeeCreds, (req, res) => {
     const body = req.body;
 
-    if(req.body.valid) {
+    if(body.valid) {
         employeeDAO.retrieveEmployee(body.username, body.password)
             .then((data) => {
                 if(data.Items[0]) {
@@ -47,8 +58,8 @@ server.post('/register', validateEmployeeCreds, (req, res) => {
                 else {
                     employeeDAO.createEmployee(uuid.v4(), body.username, body.password)
                         .then(() => {
-                            res.send('Ticket successfully created!');
-                            logger.info('Ticket successfully created!');
+                            res.send('Employee successfully registered!');
+                            logger.info('Employee successfully registered!');
                         })
                         .catch((err) => {
                             res.send('Employee registration unsuccessful.');
@@ -67,7 +78,7 @@ server.post('/register', validateEmployeeCreds, (req, res) => {
 server.post('/login', validateEmployeeCreds, (req, res) => {
     const body = req.body;
 
-    if(req.body.valid) {
+    if(body.valid) {
         employeeDAO.retrieveEmployee(body.username, body.password)
             .then((data) => {
                 if(data.Items[0]) {
@@ -91,10 +102,10 @@ server.post('/login', validateEmployeeCreds, (req, res) => {
 });
 
 // Create a ticket
-server.post('/tickets', validateTicket, (req, res) => {
+server.post('/tickets', validateTicketInfo, (req, res) => {
     const body = req.body;
 
-    if(req.body.valid) {
+    if(body.valid) {
         ticketDAO.createTicket(uuid.v4(), body.employee_id, body.description, body.amount)
             .then(() => {
                 res.send('Ticket successfully created!');
@@ -111,7 +122,47 @@ server.post('/tickets', validateTicket, (req, res) => {
     }
 });
 
+// Retrive pending tickets (anagers)
+server.get('/tickets', validateTicketStatus, (req, res) => {
+    const body = req.body;
+
+    if(body.role === "Manager") {
+        ticketDAO.retrievePendingTickets()
+            .then((data) => {
+                res.send(data.Items);
+                logger.info('Successfully retrieved pending tickets!');
+            });
+    }
+    else {
+        res.send('Unable to retrieve tickets');
+        logger.error('Unable to retreive tickets for manager.');
+    }
+})
+
+// Update ticket status (managers)
+server.put('/tickets', validateTicketStatus, (req, res) => {
+    const body = req.body;
+
+    if (body.valid) {
+        if (body.role === "Manager") {
+            ticketDAO.updateTicketStatus(body.ticket_id, body.status)
+                .then(() => {
+                    res.send('Ticket status updated successfully!');
+                    logger.info('Ticket status updated successfully!');
+                })     
+        }
+        else {
+            res.send('Unauthorized');
+            logger.error('Unauthorized attempt to modify ticket status.');
+        }
+    }
+    else {
+        res.send('Unable to update ticket status');
+        logger.error('Unable to update ticket status.');
+    }
+});
+
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    logger.info(`Server is running on port ${PORT}`);
+    logger.info(`Server is running on port ${PORT}.`);
 });

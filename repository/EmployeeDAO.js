@@ -36,7 +36,21 @@ function retrieveEmployee(username, password) {
     return docClient.scan(params).promise();
 }
 
+// Retreive an employee by ID
+function retrieveEmployeeByID(id) {
+    const params = {
+        TableName: 'employees',
+        FilterExpression: 'employee_id = :id',
+        ExpressionAttributeValues: {
+            ':id': id
+        }
+    }
+
+    return docClient.scan(params).promise();
+}
+
 module.exports = {
     createEmployee,
-    retrieveEmployee
+    retrieveEmployee,
+    retrieveEmployeeByID
 }

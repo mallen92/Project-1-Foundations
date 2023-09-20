@@ -122,24 +122,43 @@ server.post('/tickets', validateTicketInfo, (req, res) => {
     }
 });
 
-// Retrive pending tickets (anagers)
-server.get('/tickets', validateTicketStatus, (req, res) => {
-    const body = req.body;
+// Retrieve tickets
+server.get('/tickets', (req, res) => {
+    const body = req.body
 
-    if(body.role === "Manager") {
+    if(body.role === "Employee") {
+        employeeDAO.retrieveEmployeeByID(body.employee_id)
+            .then((data) => {
+                if(data.Items[0]) {
+                    ticketDAO.retrieveTicketsByEmployeeID(body.employee_id)
+                        .then((data) => {
+                            res.send(data.Items);
+                            logger.info('Successfully retrieved employee tickets!');
+                        });
+                }
+                else {
+                    res.send('Employee does not exist.');
+                    logger.error('Nonexistent employee queried.');
+                }
+            })
+    }
+    else if(body.role === "Manager") {
         ticketDAO.retrievePendingTickets()
             .then((data) => {
                 res.send(data.Items);
                 logger.info('Successfully retrieved pending tickets!');
-            });
+            })
+            .catch(() => {
+                res.send('Error retreiving tickets.');
+            })
     }
     else {
         res.send('Unable to retrieve tickets');
-        logger.error('Unable to retreive tickets for manager.');
+        logger.error('Unable to retreive tickets.');
     }
-})
+});
 
-// Update ticket status (managers)
+// Update ticket status
 server.put('/tickets', validateTicketStatus, (req, res) => {
     const body = req.body;
 

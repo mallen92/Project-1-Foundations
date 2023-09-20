@@ -23,7 +23,23 @@ function createTicket(ticket_id, employee_id, ticket_desc, ticket_amount, ticket
     return docClient.put(params).promise();
 }
 
-// Retrive pending tickets
+// Retrieve tickets by employee_id (employees)
+function retrieveTicketsByEmployeeID(id) {
+    const params = {
+        TableName: 'tickets',
+        FilterExpression: '#emp_id = :id',
+        ExpressionAttributeNames: {
+            '#emp_id': 'employee_id'
+        },
+        ExpressionAttributeValues: {
+            ':id': id
+        }
+    }
+
+    return docClient.scan(params).promise();
+}
+
+// Retrieve pending tickets (managers)
 function retrievePendingTickets() {
 
     const params = {
@@ -37,7 +53,7 @@ function retrievePendingTickets() {
     return docClient.scan(params).promise();
 }
 
-// Updae ticket status
+// Update ticket status
 function updateTicketStatus(ticket_id, status) {
 
     const params = {
@@ -56,6 +72,7 @@ function updateTicketStatus(ticket_id, status) {
 
 module.exports = { 
     createTicket,
+    retrieveTicketsByEmployeeID,
     retrievePendingTickets,
     updateTicketStatus
 }

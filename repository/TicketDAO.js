@@ -7,13 +7,13 @@ AWS.config.update({
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 // Create new ticket
-function createTicket(ticket_id, employee_id, ticket_desc, ticket_amount, ticket_status = 'Pending') {
+function createTicket(ticket_id, employee_username, ticket_desc, ticket_amount, ticket_status = 'Pending') {
 
     const params = {
         TableName: 'tickets',
         Item: {
             ticket_id,
-            employee_id,
+            employee_username,
             ticket_desc,
             ticket_amount,
             ticket_status
@@ -24,15 +24,15 @@ function createTicket(ticket_id, employee_id, ticket_desc, ticket_amount, ticket
 }
 
 // Retrieve tickets by employee_id (employees)
-function retrieveTicketsByEmployeeID(id) {
+function employeeRetrieveTickets(username) {
     const params = {
         TableName: 'tickets',
-        FilterExpression: '#emp_id = :id',
+        FilterExpression: '#emp_user = :user',
         ExpressionAttributeNames: {
-            '#emp_id': 'employee_id'
+            '#emp_user': 'employee_username'
         },
         ExpressionAttributeValues: {
-            ':id': id
+            ':user': username
         }
     }
 
@@ -40,11 +40,14 @@ function retrieveTicketsByEmployeeID(id) {
 }
 
 // Retrieve pending tickets (managers)
-function retrievePendingTickets() {
+function managerRetrieveTickets() {
 
     const params = {
         TableName: 'tickets',
-        FilterExpression: 'ticket_status = :status',
+        FilterExpression: '#status = :status',
+        ExpressionAttributeNames: {
+            '#status': 'ticket_status'
+        },
         ExpressionAttributeValues: {
             ':status': "Pending"
         }
@@ -61,7 +64,10 @@ function updateTicketStatus(ticket_id, status) {
         Key: {
             "ticket_id": ticket_id
         },
-        UpdateExpression: 'set ticket_status = :status',
+        UpdateExpression: 'set #status = :status',
+        ExpressionAttributeNames: {
+            '#status': 'ticket_status'
+        },
         ExpressionAttributeValues: {
             ':status': status
         }
@@ -72,7 +78,7 @@ function updateTicketStatus(ticket_id, status) {
 
 module.exports = { 
     createTicket,
-    retrieveTicketsByEmployeeID,
-    retrievePendingTickets,
+    employeeRetrieveTickets,
+    managerRetrieveTickets,
     updateTicketStatus
 }

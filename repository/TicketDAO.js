@@ -23,7 +23,7 @@ function createTicket(ticket_id, employee_username, ticket_desc, ticket_amount, 
     return docClient.put(params).promise();
 }
 
-// Retrieve tickets by employee_id (employees)
+// Retrieve all of an employee's tickets (employees)
 function employeeRetrieveTickets(username) {
     const params = {
         TableName: 'tickets',
@@ -39,7 +39,7 @@ function employeeRetrieveTickets(username) {
     return docClient.scan(params).promise();
 }
 
-// Retrieve pending tickets (managers)
+// Retrieve all pending (unprocessed) tickets (managers)
 function managerRetrieveTickets() {
 
     const params = {

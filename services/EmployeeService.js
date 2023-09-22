@@ -1,4 +1,5 @@
 const employeeDAO = require('../repository/EmployeeDAO');
+const jwtUtil = require('../utility/jwt_util');
 const logger = require('../log');
 
 function registerEmployee(username, password, res) {
@@ -25,6 +26,34 @@ function registerEmployee(username, password, res) {
         })
 }
 
+function loginEmployee(username, password, res) {
+    employeeDAO.retrieveEmployeeByUsername(username)
+        .then((data) => {
+            const userItem = data.Item;
+
+            if(password === userItem.password) {
+                // successful login
+                // create the jwt
+                const token = jwtUtil.createJWT(userItem.username, userItem.role);
+
+                res.send({
+                    message: "Successfully authenticated!",
+                    token: token
+                });
+            }
+            else {
+                res.statusCode = 400;
+                res.send("Invalid credentials.");
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            res.send("Failed to authenticate user.")
+            logger.error('Failed to authenticate user.');
+        });
+}
+
 module.exports = {
-    registerEmployee
+    registerEmployee,
+    loginEmployee
 }

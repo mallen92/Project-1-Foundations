@@ -4,7 +4,6 @@ const bodyParser = require('body-parser');
 const uuid = require('uuid');
 const employeeService = require('./services/EmployeeService');
 const ticketDAO = require('./repository/TicketDAO');
-const jwtUtil = require('./utility/jwt_util');
 const logger = require('./log');
 const PORT = 8000;
 
@@ -58,32 +57,17 @@ server.post('/login', (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
 
-    employeeDAO.retrieveEmployeeByUsername(username)
-        .then((data) => {
-            const userItem = data.Item;
-
-            if(password === userItem.password) {
-                // successful login
-                // create the jwt
-                const token = jwtUtil.createJWT(userItem.username, userItem.role);
-
-                res.send({
-                    message: "Successfully authenticated!",
-                    token: token
-                })
-            }
-            else {
-                res.statusCode = 400;
-                res.send({
-                    message: "Invalid credentials."
-                })
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.send("Failed to authenticate user.")
-            logger.error('Failed to authenticate user.');
-        });
+    if(username && password) { employeeService.loginEmployee(username, password, res); }
+    else if(!username) {
+        res.statusCode = 400;
+        res.send('Please provide a username.');
+        logger.error('No username was provided during employee login.');
+    }
+    else if(!password) {
+        res.statusCode = 400;
+        res.send('Please provide a password.');
+        logger.error('No password was provided during employee login');
+    }
 });
 
 // Create a ticket

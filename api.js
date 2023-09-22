@@ -1,8 +1,8 @@
 const express = require('express');
 const server = express();
 const bodyParser = require('body-parser');
-const uuid = require('uuid');
 const employeeService = require('./services/EmployeeService');
+const ticketService = require('./services/TicketService');
 const ticketDAO = require('./repository/TicketDAO');
 const logger = require('./log');
 const PORT = 8000;
@@ -10,16 +10,6 @@ const PORT = 8000;
 /* ------------------- MIDDLEWARE FUNCTIONS ------------------- */
 
 server.use(bodyParser.json());
-
-const validateTicketInfo = (req, res, next) => {
-    if(!req.body.description || !req.body.amount){
-        req.body.valid = false;
-        next();
-    }else{
-        req.body.valid = true;
-        next();
-    }
-}
 
 const validateTicketStatus = (req, res, next) => {
     if(req.body.status !== "Approved" && req.body.status !== "Denied") {
@@ -40,16 +30,8 @@ server.post('/register', (req, res) => {
     const password = req.body.password;
 
     if(username && password) { employeeService.registerEmployee(username, password, res); }
-    else if(!username) {
-        res.statusCode = 400;
-        res.send('Please provide a username.');
-        logger.error('No username was provided during employee registration.');
-    }
-    else if(!password) {
-        res.statusCode = 400;
-        res.send('Please provide a password.');
-        logger.error('No password was provided during employee registration.');
-    }
+    else if(!username) { employeeService.displayErrorMissingCredentials('username', 'registration', res); }
+    else if(!password) { employeeService.displayErrorMissingCredentials('password', 'registration', res); }
 });
 
 // Employee login
@@ -58,54 +40,19 @@ server.post('/login', (req, res) => {
     const password = req.body.password;
 
     if(username && password) { employeeService.loginEmployee(username, password, res); }
-    else if(!username) {
-        res.statusCode = 400;
-        res.send('Please provide a username.');
-        logger.error('No username was provided during employee login.');
-    }
-    else if(!password) {
-        res.statusCode = 400;
-        res.send('Please provide a password.');
-        logger.error('No password was provided during employee login');
-    }
+    else if(!username) { employeeService.displayErrorMissingCredentials('username', 'login', res); }
+    else if(!password) { employeeService.displayErrorMissingCredentials('password', 'login', res); }
 });
 
 // Create a ticket
-server.post('/tickets', validateTicketInfo, (req, res) => {
+server.post('/tickets', (req, res) => {
     const description = req.body.description;
     const amount = req.body.amount;
     const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
 
-    if(req.body.valid) {
-        jwtUtil.verifyTokenAndReturnPayload(token)
-            .then((payload) => {
-                if(payload.role === 'Employee') {
-                    ticketDAO.createTicket(uuid.v4(), payload.username, description, amount)
-                        .then(() => {
-                            res.send('Ticket successfully created!');
-                            logger.info('Ticket successfully created!');
-                        })
-                        .catch((err) => {
-                            res.send('Ticket creation unsuccessful.');
-                            logger.error('Ticket creation unsuccessful.');
-                        })
-                }
-                else {
-                    res.statusCode = 401;
-                    res.send(`Unauthorized: ${payload.role}s cannot submit tickets.`);
-                    logger.error('There was an unauthorized attempt to submit a ticket.');
-                }
-            })
-            .catch((err) => {
-                console.error(err);
-                res.statusCode = 401;
-                res.send('Failed to authenticate token.')
-            })
-    }
-    else {
-        res.send('Ticket is missing information.');
-        logger.error('Submission attempt of ticket with missing information');
-    }
+    if(description && amount && token) { ticketService.createTicket(description, amount, token, res); }
+    else if(!description) { ticketService.displayErrorMissingReimbItems('description', res); }
+    else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
 });
 
 // Retrieve tickets

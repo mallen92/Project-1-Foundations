@@ -53,7 +53,14 @@ function loginEmployee(username, password, res) {
         });
 }
 
+function displayErrorMissingCredentials(credential, action, res) {
+    res.statusCode = 400;
+    res.send(`Please provide a ${credential}.`);
+    logger.error(`No ${credential} was provided during employee ${action}.`);
+}
+
 module.exports = {
     registerEmployee,
-    loginEmployee
+    loginEmployee,
+    displayErrorMissingCredentials
 }

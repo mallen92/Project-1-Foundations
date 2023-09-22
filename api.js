@@ -2,25 +2,15 @@ const express = require('express');
 const server = express();
 const bodyParser = require('body-parser');
 const uuid = require('uuid');
-const employeeDAO = require('./repository/EmployeeDAO');
+const employeeService = require('./services/EmployeeService');
 const ticketDAO = require('./repository/TicketDAO');
 const jwtUtil = require('./utility/jwt_util');
 const logger = require('./log');
 const PORT = 8000;
 
-// Third-party middleware
-server.use(bodyParser.json());
+/* ------------------- MIDDLEWARE FUNCTIONS ------------------- */
 
-// Custom middleware
-const validateEmployeeCreds = (req, res, next) => {
-    if(!req.body.username || !req.body.password){
-        req.body.valid = false;
-        next();
-    }else{
-        req.body.valid = true;
-        next();
-    }
-}
+server.use(bodyParser.json());
 
 const validateTicketInfo = (req, res, next) => {
     if(!req.body.description || !req.body.amount){
@@ -46,33 +36,20 @@ const validateTicketStatus = (req, res, next) => {
 /* ------------------- HANDLERS ------------------- */
 
 // Employee registration
-server.post('/register', validateEmployeeCreds, (req, res) => {
+server.post('/register', (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
 
-    if(req.body.valid) {
-        employeeDAO.retrieveEmployeeByUsername(username)
-            .then((data) => {
-                if(data.Item) {
-                    res.send('That employee is already registered.');
-                    logger.error('Credentials for existing employee provided during employee registration.');
-                }
-                else {
-                    employeeDAO.createEmployee(username, password)
-                        .then(() => {
-                            res.send('Employee successfully registered!');
-                            logger.info('Employee successfully registered!');
-                        })
-                        .catch((err) => {
-                            res.send('Employee registration unsuccessful.');
-                            logger.error('Employee registration unsuccessful.');
-                        })
-                }
-            })
+    if(username && password) { employeeService.registerEmployee(username, password, res); }
+    else if(!username) {
+        res.statusCode = 400;
+        res.send('Please provide a username.');
+        logger.error('No username was provided during employee registration.');
     }
-    else {
-        res.send('Invalid item properties...');
-        logger.error('Invalid item properties provided during employee registration.');
+    else if(!password) {
+        res.statusCode = 400;
+        res.send('Please provide a password.');
+        logger.error('No password was provided during employee registration.');
     }
 });
 

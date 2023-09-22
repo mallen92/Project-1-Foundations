@@ -25,9 +25,7 @@ function createEmployee(username, password, role = 'Employee') {
 function retrieveEmployeeByUsername(username) {
     const params = {
         TableName: 'employees',
-        Key: {
-            username
-        }
+        Key: { username }
     };
     
     return docClient.get(params).promise();

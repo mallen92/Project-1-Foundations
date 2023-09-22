@@ -25,6 +25,7 @@ function createTicket(ticket_id, employee_username, ticket_desc, ticket_amount, 
 
 // Retrieve all of an employee's tickets (employees)
 function employeeRetrieveTickets(username) {
+    
     const params = {
         TableName: 'tickets',
         FilterExpression: '#emp_user = :user',
@@ -49,7 +50,7 @@ function managerRetrieveTickets() {
             '#status': 'ticket_status'
         },
         ExpressionAttributeValues: {
-            ':status': "Pending"
+            ':status': 'Pending'
         }
     }
 
@@ -62,7 +63,7 @@ function updateTicketStatus(ticket_id, status) {
     const params = {
         TableName: 'tickets',
         Key: {
-            "ticket_id": ticket_id
+            'ticket_id': ticket_id
         },
         UpdateExpression: 'set #status = :status',
         ExpressionAttributeNames: {

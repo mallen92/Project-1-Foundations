@@ -7,13 +7,12 @@ AWS.config.update({
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 // Create new ticket
-function createTicket(ticket_id, employee_username, ticket_desc, ticket_amount, ticket_status = 'Pending') {
-
+function createTicket(ticket_id, creator_username, ticket_desc, ticket_amount, ticket_status = 'Pending') {
     const params = {
         TableName: 'tickets',
         Item: {
             ticket_id,
-            employee_username,
+            creator_username,
             ticket_desc,
             ticket_amount,
             ticket_status
@@ -23,26 +22,50 @@ function createTicket(ticket_id, employee_username, ticket_desc, ticket_amount, 
     return docClient.put(params).promise();
 }
 
-// Retrieve all of an employee's tickets (employees)
-function employeeRetrieveTickets(username) {
-    
+// Retrieve all tickets
+function retrieveAllTickets() {
+    const params = {
+        TableName: 'tickets'
+    }
+
+    return docClient.scan(params).promise();
+}
+
+// Retrieve all of an employee's tickets
+function retrieveTicketsByEmployee(creator_username) {
     const params = {
         TableName: 'tickets',
-        FilterExpression: '#emp_user = :user',
+        FilterExpression: '#employee = :employee',
         ExpressionAttributeNames: {
-            '#emp_user': 'employee_username'
+            '#employee': 'creator_username'
         },
         ExpressionAttributeValues: {
-            ':user': username
+            ':employee': creator_username
         }
     }
 
     return docClient.scan(params).promise();
 }
 
-// Retrieve all pending (unprocessed) tickets (managers)
-function managerRetrieveTickets() {
+// Filter an employee's tickets by status
+function retrieveEmployeeTicketsByStatus(creator_username, status) {
+    const params = {
+        TableName: 'tickets',
+        FilterExpression: '#employee = :employee AND #status = :status',
+        ExpressionAttributeNames: {
+            '#employee': 'creator_username',
+            '#status': 'ticket_status'
+        },
+        ExpressionAttributeValues: {
+            ':employee': creator_username,
+            ':status': status
+        }
+    }
 
+    return docClient.scan(params).promise(); 
+}
+
+function retrieveTicketsByStatus(status) {
     const params = {
         TableName: 'tickets',
         FilterExpression: '#status = :status',
@@ -50,11 +73,22 @@ function managerRetrieveTickets() {
             '#status': 'ticket_status'
         },
         ExpressionAttributeValues: {
-            ':status': 'Pending'
+            ':status': status
         }
     }
 
     return docClient.scan(params).promise();
+}
+
+function retrieveEmployeeTicket(ticket_id) {
+    const params = {
+        TableName: 'tickets',
+        Key: {
+            ticket_id
+        }
+    }
+
+    return docClient.get(params).promise();
 }
 
 // Update ticket status
@@ -79,7 +113,10 @@ function updateTicketStatus(ticket_id, status) {
 
 module.exports = { 
     createTicket,
-    employeeRetrieveTickets,
-    managerRetrieveTickets,
+    retrieveTicketsByEmployee,
+    retrieveAllTickets,
+    retrieveEmployeeTicketsByStatus,
+    retrieveTicketsByStatus,
+    retrieveEmployeeTicket,
     updateTicketStatus
 }

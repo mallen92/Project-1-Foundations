@@ -4,23 +4,11 @@ const bodyParser = require('body-parser');
 const employeeService = require('./services/EmployeeService');
 const ticketService = require('./services/TicketService');
 const ticketDAO = require('./repository/TicketDAO');
+const jwtUtil = require('./utility/jwt_util');
 const logger = require('./log');
 const PORT = 8000;
 
-/* ------------------- MIDDLEWARE FUNCTIONS ------------------- */
-
 server.use(bodyParser.json());
-
-const validateTicketStatus = (req, res, next) => {
-    if(req.body.status !== "Approved" && req.body.status !== "Denied") {
-        req.body.valid = false;
-        next();
-    }
-    else {
-        req.body.valid = true;
-        next();
-    }
-}
 
 /* ------------------- HANDLERS ------------------- */
 
@@ -55,81 +43,58 @@ server.post('/tickets', (req, res) => {
     else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
 });
 
-// Retrieve tickets
 server.get('/tickets', (req, res) => {
     const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
+    const status = req.query.status;
+    const role = req.query.role;
+    const ticket_id = req.query.tid;
 
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            const username = payload.username;
+    if(role === 'employee') {
+        if(!status && !ticket_id)
+            ticketService.viewTicketsByEmployee(token, res);
+        else if(!status && ticket_id)
+            ticketService.viewEmployeeTicket(ticket_id, token, res);
+        else if(status && !ticket_id)
+            ticketService.viewTicketsByStatus(status, token, res);
+    }
+    else if(role === 'manager') {
+        if(!status)
+            ticketService.viewAllTickets(token, res);
+        else
+            ticketService.viewTicketsByStatus(status, token, res);
+    }
 
-            if(payload.role === 'Employee') {
-                ticketDAO.employeeRetrieveTickets(username)
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info(`Employee ${username}'s tickets were successfully retreived!`);
-                        }
-                        else {
-                            res.send('No submitted tickets found.');
-                            logger.info(`Employee ${username}'s tickets has no submitted tickets.`);
-                        }
-                    })
-            }
-            else if (payload.role === 'Manager') {
-                ticketDAO.managerRetrieveTickets()
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info(`Pending tickets successfully retreived!`);
-                        }
-                        else {
-                            res.send('There are no pending tickets to process.');
-                            logger.info(`Manager ${username}'s ticket queue is empty.`);
-                        }
-                    })
-            }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to view tickets.');
-                logger.info('There was an unauthorized attempt to view tickets.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.');
-        })
+
 });
 
 // Update ticket status
-server.put('/tickets', validateTicketStatus, (req, res) => {
-    const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
-    const ticket_id = req.body.ticket_id;
-    const status = req.body.status;
+// server.put('/tickets', validateTicketStatus, (req, res) => {
+//     const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
+//     const ticket_id = req.body.ticket_id;
+//     const status = req.body.status;
 
-    if(req.body.valid) {
-        jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            if(payload.role === 'Manager') {
-                ticketDAO.updateTicketStatus(ticket_id, status)
-                    .then(() => {
-                        res.send('Ticket status updated successfully!');
-                        logger.info('Ticket status updated successfully!');
-                    })   
-            }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to modify the status of tickets.');
-                logger.info('There was an unauthorized attempt to modify ticket status.');
-            }
-        })
-    }
-    else {
-        res.send('Unable to update ticket status');
-        logger.error('Unable to update ticket status.');
-    }
-});
+//     if(req.body.valid) {
+//         jwtUtil.verifyTokenAndReturnPayload(token)
+//         .then((payload) => {
+//             if(payload.role === 'Manager') {
+//                 ticketDAO.updateTicketStatus(ticket_id, status)
+//                     .then(() => {
+//                         res.send('Ticket status updated successfully!');
+//                         logger.info('Ticket status updated successfully!');
+//                     })   
+//             }
+//             else {
+//                 res.statusCode = 401;
+//                 res.send('You are unauthorized to modify the status of tickets.');
+//                 logger.info('There was an unauthorized attempt to modify ticket status.');
+//             }
+//         })
+//     }
+//     else {
+//         res.send('Unable to update ticket status');
+//         logger.error('Unable to update ticket status.');
+//     }
+// });
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

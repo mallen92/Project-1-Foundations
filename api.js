@@ -3,8 +3,6 @@ const server = express();
 const bodyParser = require('body-parser');
 const employeeService = require('./services/EmployeeService');
 const ticketService = require('./services/TicketService');
-const ticketDAO = require('./repository/TicketDAO');
-const jwtUtil = require('./utility/jwt_util');
 const logger = require('./log');
 const PORT = 8000;
 
@@ -43,10 +41,12 @@ server.post('/tickets', (req, res) => {
     else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
 });
 
+// Retrieve tickets
 server.get('/tickets', (req, res) => {
     const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
-    const status = req.query.status;
+    const employee = req.query.emp;
     const role = req.query.role;
+    const status = req.query.status;
     const ticket_id = req.query.tid;
 
     if(role === 'employee') {
@@ -58,9 +58,13 @@ server.get('/tickets', (req, res) => {
             ticketService.viewTicketsByStatus(status, token, res);
     }
     else if(role === 'manager') {
-        if(!status)
+        if(!status && !employee && !ticket_id)
             ticketService.viewAllTickets(token, res);
-        else
+        else if(!status && employee && !ticket_id)
+            ticketService.viewTicketsByEmployee(token, res, employee)
+        else if(!status && !employee && ticket_id)
+            ticketService.viewEmployeeTicket(ticket_id, token, res);
+        else if(status && !employee && !ticket_id)
             ticketService.viewTicketsByStatus(status, token, res);
     }
 

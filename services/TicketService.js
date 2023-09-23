@@ -58,26 +58,17 @@ function viewAllTickets(token, res) {
         })
 }
 
-function viewTicketsByEmployee(token, res) {
+function viewTicketsByEmployee(token, res, employee = null) {
     jwtUtil.verifyTokenAndReturnPayload(token)
         .then((payload) => {
             const role = payload.role;
-            const employee = payload.username;
 
-            if(role === 'Employee' || role === 'Manager') {
-                ticketDAO.retrieveTicketsByEmployee(employee)
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info(`Employee ${employee}'s tickets were successfully retreived!`);
-                        }
-                        else {
-                            res.statusCode = 400;
-                            res.send('You have no tickets.');
-                            logger.info(`Employee ${employee} has no tickets.`);
-                        }
-                    })
+            if(role === 'Employee') {
+                employee = payload.username;
+                retrieveTicketsByEmployee(employee, res);
             }
+            else if(role === 'Manager')
+                retrieveTicketsByEmployee(employee, res);
             else {
                 res.statusCode = 401;
                 res.send('You are unauthorized to view tickets');
@@ -113,21 +104,21 @@ function viewTicketsByStatus(status, token, res) {
                     })
             }
             else if(role === "Manager") {
-                ticketDAO.retrieveTicketsByStatus(status)
+                ticketDAO.retrieveTicketsByStatus(capitalStatus)
                     .then((data) => {
                         if(data.Items[0]) {
                             res.send(data.Items);
-                            logger.info(`All of the ${status.toLowerCase()} tickets were successfully retreived!`);
+                            logger.info(`All of the ${status} tickets were successfully retreived!`);
                         }
                         else {
                             res.statusCode = 400;
                             if(status === "Pending") {
-                                res.send(`There are no ${status.toLowerCase()} tickets to process`);
-                                logger.info(`There are no ${status.toLowerCase()} tickets to process.`);
+                                res.send(`There are no ${status} tickets to process`);
+                                logger.info(`There are no ${status} tickets to process.`);
                             }
                             else {
-                                res.send(`There are no ${status.toLowerCase()} tickets to view.`);
-                                logger.info(`There are no ${status.toLowerCase()} tickets to view.`);
+                                res.send(`There are no ${status} tickets to view.`);
+                                logger.info(`There are no ${status} tickets to view.`);
                             }
 
                         }
@@ -150,7 +141,6 @@ function viewEmployeeTicket(ticket_id, token, res) {
     jwtUtil.verifyTokenAndReturnPayload(token)
         .then((payload) => {
             const role = payload.role;
-            const employee = payload.username;
 
             if(role === 'Employee' || role === 'Manager') {
                 ticketDAO.retrieveEmployeeTicket(ticket_id)
@@ -184,6 +174,30 @@ function displayErrorMissingReimbItems(item, res) {
     res.send(`Please provide a reimbursement ${item}.`);
     logger.error(`No reimbursment ${item} was provided during ticket creation.`);
 }
+
+/*-------------------- HELPER FUNCTIONS --------------------*/
+
+function retrieveTicketsByEmployee(employee, res) {
+    ticketDAO.retrieveTicketsByEmployee(employee)
+        .then((data) => {
+            if(data.Items[0]) {
+                res.send(data.Items);
+                logger.info(`Employee ${employee}'s tickets were successfully retreived!`);
+            }
+            else {
+                res.statusCode = 400;
+
+                if(role === 'Employee')
+                    res.send('You have no tickets.');
+                else
+                    res.send(`Employee ${employee} has no tickets.`);
+
+                logger.info(`Employee ${employee} has no tickets.`);
+            }
+        })
+}
+
+/*-------------------- END HELPER FUNCTIONS --------------------*/
 
 module.exports = {
     createTicket,

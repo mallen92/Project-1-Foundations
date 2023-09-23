@@ -72,33 +72,13 @@ server.get('/tickets', (req, res) => {
 });
 
 // Update ticket status
-// server.put('/tickets', validateTicketStatus, (req, res) => {
-//     const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
-//     const ticket_id = req.body.ticket_id;
-//     const status = req.body.status;
+server.put('/tickets', (req, res) => {
+    const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
+    const ticket_id = req.body.ticket_id;
+    const status = req.body.status;
 
-//     if(req.body.valid) {
-//         jwtUtil.verifyTokenAndReturnPayload(token)
-//         .then((payload) => {
-//             if(payload.role === 'Manager') {
-//                 ticketDAO.updateTicketStatus(ticket_id, status)
-//                     .then(() => {
-//                         res.send('Ticket status updated successfully!');
-//                         logger.info('Ticket status updated successfully!');
-//                     })   
-//             }
-//             else {
-//                 res.statusCode = 401;
-//                 res.send('You are unauthorized to modify the status of tickets.');
-//                 logger.info('There was an unauthorized attempt to modify ticket status.');
-//             }
-//         })
-//     }
-//     else {
-//         res.send('Unable to update ticket status');
-//         logger.error('Unable to update ticket status.');
-//     }
-// });
+    ticketService.updateTicketStatus(token, status, ticket_id, res);
+});
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

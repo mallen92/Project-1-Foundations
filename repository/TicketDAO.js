@@ -80,7 +80,7 @@ function retrieveTicketsByStatus(status) {
     return docClient.scan(params).promise();
 }
 
-function retrieveEmployeeTicket(ticket_id) {
+function retrieveTicket(ticket_id) {
     const params = {
         TableName: 'tickets',
         Key: {
@@ -117,6 +117,6 @@ module.exports = {
     retrieveAllTickets,
     retrieveEmployeeTicketsByStatus,
     retrieveTicketsByStatus,
-    retrieveEmployeeTicket,
+    retrieveTicket,
     updateTicketStatus
 }

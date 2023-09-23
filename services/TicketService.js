@@ -2,6 +2,7 @@ const uuid = require('uuid');
 const ticketDAO = require('../repository/TicketDAO');
 const jwtUtil = require('../utility/jwt_util');
 const logger = require('../log');
+const e = require('express');
 
 function createTicket(description, amount, token, res) {
     jwtUtil.verifyTokenAndReturnPayload(token)
@@ -65,10 +66,10 @@ function viewTicketsByEmployee(token, res, employee = null) {
 
             if(role === 'Employee') {
                 employee = payload.username;
-                retrieveTicketsByEmployee(employee, res);
+                getTicketsByEmployeeFromDAO(employee, role, res);
             }
             else if(role === 'Manager')
-                retrieveTicketsByEmployee(employee, res);
+                getTicketsByEmployeeFromDAO(employee, role, res);
             else {
                 res.statusCode = 401;
                 res.send('You are unauthorized to view tickets');
@@ -141,9 +142,26 @@ function viewEmployeeTicket(ticket_id, token, res) {
     jwtUtil.verifyTokenAndReturnPayload(token)
         .then((payload) => {
             const role = payload.role;
+            const emp = payload.username;
 
-            if(role === 'Employee' || role === 'Manager') {
-                ticketDAO.retrieveEmployeeTicket(ticket_id)
+            if(role === 'Employee') {
+                ticketDAO.retrieveTicket(ticket_id)
+                    .then((data) => {
+                        const checkedEmp = data.Item.creator_username;
+
+                        if(emp === checkedEmp) {
+                            res.send(data.Item);
+                            logger.info('Ticket was successfully retreived!');
+                        }
+                        else {
+                            res.statusCode = 401;
+                            res.send('You are unauthorized to view this ticket.');
+                            logger.info('Unauthorized attempt to a view ticket.');
+                        }
+                    })
+            }
+            else if(role === 'Manager') {
+                ticketDAO.retrieveTicket(ticket_id)
                     .then((data) => {
                         if(data.Item) {
                             res.send(data.Item);
@@ -169,6 +187,45 @@ function viewEmployeeTicket(ticket_id, token, res) {
         })
 }
 
+function updateTicketStatus(token, newStatus, ticket_id, res) {
+    jwtUtil.verifyTokenAndReturnPayload(token)
+        .then((payload) => {
+            if(payload.role === 'Manager') {
+                ticketDAO.retrieveEmployeeTicket(ticket_id)
+                    .then((data) => {
+                        const checkedStatus = data.Item.ticket_status;
+
+                        if(checkedStatus === 'Approved' || checkedStatus === 'Denied') {
+                            res.statusCode = 401;
+                            res.send('This ticket cannot be modified because it has already been processed.');
+                            logger.info('There was an attempt to modify the status of a processed ticket.');
+                        }
+                        else {
+                            ticketDAO.updateTicketStatus(ticket_id, newStatus)
+                                .then(() => {
+                                    res.statusCode = 200;
+                                    res.send('Ticket status updated successfully!');
+                                    logger.info('Ticket status updated successfully!');
+                                })   
+                        }
+                    })
+                    .catch((err) => {
+                        res.statusCode = 404;
+                        res.send('The status of this ticket could not be retrieved.')
+                    });
+            }
+            else {
+                res.statusCode = 401;
+                res.send('You are unauthorized to modify the status of tickets.');
+                logger.info('There was an unauthorized attempt to modify ticket status.');
+            }
+        })
+        .catch((err) => {
+            res.statusCode = 401;
+            res.send('Failed to authenticate token.')
+        })
+}
+
 function displayErrorMissingReimbItems(item, res) {
     res.statusCode = 400;
     res.send(`Please provide a reimbursement ${item}.`);
@@ -177,7 +234,7 @@ function displayErrorMissingReimbItems(item, res) {
 
 /*-------------------- HELPER FUNCTIONS --------------------*/
 
-function retrieveTicketsByEmployee(employee, res) {
+function getTicketsByEmployeeFromDAO(employee, role, res) {
     ticketDAO.retrieveTicketsByEmployee(employee)
         .then((data) => {
             if(data.Items[0]) {
@@ -205,5 +262,6 @@ module.exports = {
     viewTicketsByEmployee,
     viewTicketsByStatus,
     viewEmployeeTicket,
+    updateTicketStatus,
     displayErrorMissingReimbItems
 }

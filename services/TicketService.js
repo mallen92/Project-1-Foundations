@@ -2,7 +2,6 @@ const uuid = require('uuid');
 const ticketDAO = require('../repository/TicketDAO');
 const jwtUtil = require('../utility/jwt_util');
 const logger = require('../log');
-const e = require('express');
 
 function createTicket(description, amount, token, res) {
     jwtUtil.verifyTokenAndReturnPayload(token)

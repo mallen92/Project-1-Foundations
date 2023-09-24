@@ -1,12 +1,12 @@
 const express = require('express');
 const server = express();
 const bodyParser = require('body-parser');
-const registerLoginRoute = require('./routes/RegisterLoginRoutes');
+const authRoute = require('./routes/AuthRoutes');
 const ticketsRoute = require('./routes/TicketRoutes');
 const PORT = 8000;
 
 server.use(bodyParser.json());
-server.use(registerLoginRoute);
+server.use(authRoute);
 server.use(ticketsRoute);
 
 server.listen(PORT, () => {

@@ -1,5 +1,6 @@
 const uuid = require('uuid');
 const ticketDAO = require('../repository/TicketDAO');
+const employeeDAO = require('../repository/EmployeeDAO');
 const jwtUtil = require('../utility/jwt_util');
 const logger = require('../log');
 
@@ -43,28 +44,35 @@ async function viewAllTickets(token) {
         return {status: 'userAuthFailed'};
 }
 
-async function viewTicketsByEmployee(token, employee = null) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            const role = payload.role;
+async function viewTicketsByEmployee(token, employee) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token);
+    const queriedEmployee = await employeeDAO.getEmployee(employee);
+    const queriedEmployeeUsername = queriedEmployee.Item.username;
+    const queriedEmployeeRole = queriedEmployee.Item.role;
+    let tickets;
 
-            if(role === 'Employee') {
-                employee = payload.username;
-                getTicketsByEmployeeFromDAO(employee, role, res);
-            }
-            else if(role === 'Manager')
-                getTicketsByEmployeeFromDAO(employee, role, res);
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to view tickets');
-                logger.info('Unauthorized attempt to view tickets.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.')
-        })
+    if(tokenPayload) {
+        switch(tokenPayload.role) {
+            case 'Manager':
+                if(queriedEmployeeRole === 'Manager')
+                    return {status: 'userIsManager'};
+                else {
+                    tickets = await ticketDAO.retrieveTicketsByEmployee(queriedEmployeeUsername);
+                    return respondToAPI(tickets);
+                }
+            case 'Employee':
+                if(tokenPayload.username === queriedEmployeeUsername) {
+                    tickets = await ticketDAO.retrieveTicketsByEmployee(queriedEmployeeUsername);
+                    return respondToAPI(tickets); 
+                }
+                else
+                    return {status: 'empUnauthorized'};
+            default:
+                return {status: 'generalUnauthorized'};
+        }
+    }
+    else
+        return {status: 'userAuthFailed'};
 }
 
 function viewTicketsByStatus(status, token, res) {
@@ -122,7 +130,7 @@ function viewTicketsByStatus(status, token, res) {
         })
 }
 
-function viewEmployeeTicket(ticket_id, token, res) {
+function viewEmployeeTicket(ticket_id, token) {
     jwtUtil.verifyTokenAndReturnPayload(token)
         .then((payload) => {
             const role = payload.role;

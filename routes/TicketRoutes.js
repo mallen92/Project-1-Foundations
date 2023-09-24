@@ -64,6 +64,47 @@ router.get('/', async (req, res) => {
     }
 })
 
+/* View an employee's tickets
+- Managers should retreive ALL of a single employee's tickets
+- Employees should retreive only THEIR tickets */
+router.get('/:employee', async (req, res) => {
+    const token = req.headers.authorization.split(' ')[1];
+    const queriedEmployee = req.params.employee;
+    const getTicketResult = await ticketService.viewTicketsByEmployee(token, queriedEmployee);
+
+    switch(getTicketResult.status) {
+        case 'retrievalSuccess':
+            res.status(200).send(getTicketResult.data);
+            break;
+        case 'retrievalFailure':
+            res.status(400).send({message: 'Unable to retieve tickets.'});
+            break;
+        case 'userIsManager':
+            res.status(401).send({message: 'Managers are unable to submit reimbursement tickets.'});
+            break;
+        case 'empUnauthorized':
+            res.status(401).send({message: 'You are unauthorized from viewing these tickets.'});
+            break;
+        case 'generalUnauthorized':
+            res.status(401).send({message: 'Unauthorized.'});
+            break;
+        case 'userAuthFailed':
+            res.status(401).send({message: 'Authentication failed.'});
+            break;
+        default:
+            res.status(500).send({message: 'There was an unexpected error.'});
+    }
+})
+
+/* View a single ticket
+- Managers should retrieve ANY ticket from the database
+- Employees should retreive only a ticket that belongs to them. */
+router.get('/:employee/:tid', async (req, res) => {
+    const token = req.headers.authorization.split(' ')[1];
+    const queriedEmployee = req.params.employee;
+    const queriedTicketId = req.params.tid;
+})
+
 // router.get('/tickets', (req, res) => {
 //     const token = req.headers.authorization.split(' ')[1];
 //     const employee = req.query.emp;

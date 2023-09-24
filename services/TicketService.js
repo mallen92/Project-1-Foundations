@@ -3,33 +3,23 @@ const ticketDAO = require('../repository/TicketDAO');
 const jwtUtil = require('../utility/jwt_util');
 const logger = require('../log');
 
-function createTicket(description, amount, token, res) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            if(payload.role === 'Employee') {
-                ticketDAO.createTicket(uuid.v4(), payload.username, description, amount)
-                    .then(() => {
-                        res.statusCode = 200;
-                        res.send('Ticket successfully created!');
-                        logger.info('Ticket successfully created!');
-                    })
-                    .catch((err) => {
-                        res.statusCode = 500;
-                        res.send('Ticket creation unsuccessful.');
-                        logger.error('Ticket creation unsuccessful.');
-                    })
-            }
-            else {
-                res.statusCode = 401;
-                res.send(`Unauthorized: ${payload.role}s cannot submit tickets.`);
-                logger.error('There was an unauthorized attempt to submit a ticket.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.')
-        })
+async function createTicket(description, amount, token) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token);
+
+    if(tokenPayload) {
+        if(tokenPayload.role === 'Employee') {
+            const ticketCreated = await ticketDAO.createTicket(uuid.v4(), tokenPayload.username, description, amount);
+
+            if(ticketCreated)
+                return 'ticketCreationSuccess';
+            else
+                return 'ticketCreationFailed';
+        }
+        else
+            return 'userIsManager';
+    }
+    else
+        return 'userAuthFailed';
 }
 
 function viewAllTickets(token, res) {

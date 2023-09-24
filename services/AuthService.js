@@ -18,7 +18,7 @@ async function registerEmployee(enteredUsername, enteredPass) {
     }
 }
 
-/* Returns the JWT upon successful login, -100 if the password is incorrect,
+/* Returns a JWT upon successful login, -100 if the password is incorrect,
 and -200 if no user with the provided credentials exists */
 async function loginEmployee(enteredUsername, enteredPass) {
     const userInDB = await employeeDAO.getEmployee(enteredUsername);
@@ -26,9 +26,10 @@ async function loginEmployee(enteredUsername, enteredPass) {
     if(userInDB.Item) {
         const userInDBUsername = userInDB.Item.username;
         const userInDBPassword = userInDB.Item.password;
+        const userInDBRole = userInDB.Item.role;
         
         if(enteredPass === userInDBPassword)
-            return jwtUtil.createJWT(userInDBUsername, userInDBPassword);
+            return jwtUtil.createJWT(userInDBUsername, userInDBRole);
         else
             return Number(-100);
     }

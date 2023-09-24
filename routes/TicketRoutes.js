@@ -3,15 +3,40 @@ const ticketService = require('../services/TicketService');
 const router = Router();
 module.exports = router;
 
+// Middleware to ensure reimbursement info is not missing info
+function checkForMissingInfo(req, res, next) {
+    if(!req.body.description)
+        res.status(400).send({message: 'Please provide a reimbursement description.'});
+    else if(!req.body.amount)
+        res.status(400).send({message: 'Please provide a reimbursement amount.'});
+    else
+        next();
+};
+
 // Create a ticket (employees only)
-router.post('/tickets', (req, res) => {
+router.post('/tickets', checkForMissingInfo, async (req, res) => {
     const description = req.body.description;
     const amount = req.body.amount;
     const token = req.headers.authorization.split(' ')[1];
 
-    if(description && amount && token) { ticketService.createTicket(description, amount, token, res); }
-    else if(!description) { ticketService.displayErrorMissingReimbItems('description', res); }
-    else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
+    const createTicketResult = await ticketService.createTicket(description, amount, token, res);
+
+    switch(createTicketResult) {
+        case 'ticketCreationSuccess':
+            res.status(200).send({message: 'Reimbursement successfully submitted!'});
+            break;
+        case 'ticketCreationFailed':
+            res.status(400).send({message: 'There was an error submitting the reimbursement.'});
+            break;
+        case 'userIsManager':
+            res.status(401).send({message: 'Unauthorized: managers cannot submit reimbursement requests.'});
+            break;
+        case 'userAuthFailed':
+            res.status(401).send({message: 'Authentication failed.'});
+            break;
+        default:
+            res.status(500).send({message: 'There was an unexpected error.'});
+    }
 });
 
 // View tickets

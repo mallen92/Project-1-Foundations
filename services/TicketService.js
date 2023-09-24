@@ -22,33 +22,28 @@ async function createTicket(description, amount, token) {
         return 'userAuthFailed';
 }
 
-function viewAllTickets(token, res) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            const role = payload.role;
+async function viewAllTickets(token) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token)
+    let tickets;
 
-            if (role === 'Manager') {
-                ticketDAO.retrieveAllTickets()
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info('All tickets were successfully retreived!');
-                        }
-                        else {
-                            res.send('There are no tickets.');
-                            logger.info('Manager has no tickets to view.');
-                        }
-                    })
-            }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to view tickets.');
-                logger.info('There was an unauthorized attempt to view all tickets.');
-            }
-        })
+    if(tokenPayload) {
+        switch(tokenPayload.role) {
+            case 'Manager':
+                tickets = await ticketDAO.retrieveAllTickets();
+                return respondToAPI(tickets);
+            case 'Employee':
+                const employee = tokenPayload.username;
+                tickets = await ticketDAO.retrieveTicketsByEmployee(employee);
+                return respondToAPI(tickets);
+            default:
+                return {status: 'userUnauthorized'};
+        }
+    }
+    else
+        return {status: 'userAuthFailed'};
 }
 
-function viewTicketsByEmployee(token, res, employee = null) {
+async function viewTicketsByEmployee(token, employee = null) {
     jwtUtil.verifyTokenAndReturnPayload(token)
         .then((payload) => {
             const role = payload.role;
@@ -215,32 +210,17 @@ function updateTicketStatus(token, newStatus, ticket_id, res) {
         })
 }
 
-function displayErrorMissingReimbItems(item, res) {
-    res.statusCode = 400;
-    res.send(`Please provide a reimbursement ${item}.`);
-    logger.error(`No reimbursment ${item} was provided during ticket creation.`);
-}
-
 /*-------------------- HELPER FUNCTIONS --------------------*/
 
-function getTicketsByEmployeeFromDAO(employee, role, res) {
-    ticketDAO.retrieveTicketsByEmployee(employee)
-        .then((data) => {
-            if(data.Items[0]) {
-                res.send(data.Items);
-                logger.info(`Employee ${employee}'s tickets were successfully retreived!`);
-            }
-            else {
-                res.statusCode = 400;
-
-                if(role === 'Employee')
-                    res.send('You have no tickets.');
-                else
-                    res.send(`Employee ${employee} has no tickets.`);
-
-                logger.info(`Employee ${employee} has no tickets.`);
-            }
-        })
+function respondToAPI(tickets) {
+    if(tickets) {
+        return {
+            status: 'retrievalSuccess',
+            data: tickets.Items
+        };
+    }
+    else
+        return 'retreivalFailure';
 }
 
 /*-------------------- END HELPER FUNCTIONS --------------------*/
@@ -251,6 +231,5 @@ module.exports = {
     viewTicketsByEmployee,
     viewTicketsByStatus,
     viewEmployeeTicket,
-    updateTicketStatus,
-    displayErrorMissingReimbItems
+    updateTicketStatus
 }

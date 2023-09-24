@@ -42,14 +42,20 @@ router.post('/login', checkForMissingCreds, async (req, res) => {
 
     const loginResult = await authService.loginEmployee(enteredUsername, enteredPassword);
         
-    if(loginResult === -100)
-        res.status(400).send({message: 'The entered password was incorrect.'}); 
-    else if(loginResult === -200)
-        res.status(400).send({message: 'User does not exist.'});
-    else {
-        res.status(200).send({
-            message: 'Successfully authenticated!',
-            token: loginResult
-        });
+    switch(loginResult.status) {
+        case 'loginSuccess':
+            res.status(200).send({
+                message: 'Successfully authenticated!',
+                token: loginResult.data
+            });
+            break;
+        case 'passIncorrect':
+            res.status(400).send({message: 'The entered password was incorrect.'}); 
+            break;
+        case 'notAUser':
+            res.status(400).send({message: 'User does not exist.'});
+            break;
+        default:
+            res.status(500).send({message: 'There was an unexpected error.'});  
     }
 });

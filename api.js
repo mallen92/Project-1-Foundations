@@ -7,7 +7,7 @@ const PORT = 8000;
 
 server.use(bodyParser.json());
 server.use(authRoute);
-server.use(ticketsRoute);
+server.use('/tickets', ticketsRoute);
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

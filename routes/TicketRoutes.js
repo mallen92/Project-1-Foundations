@@ -40,7 +40,7 @@ router.post('/', checkForMissingInfo, async (req, res) => {
 });
 
 /* View all tickets OR view tickets by status
-- Managers should retreive ALL tickets in the database
+- Managers should retreive any employee's tickets
 - Employees should retrieve only THEIR tickets */
 router.get('/', async (req, res) => {
     const token = req.headers.authorization.split(' ')[1];
@@ -54,52 +54,22 @@ router.get('/', async (req, res) => {
     sendTicketRouteResponse(getTicketResult, res);
 });
 
-/* View an employee's tickets
-- Managers should retreive ALL of a single employee's tickets
-- Employees should retreive only THEIR tickets */
+/* View one OR all of an employee's tickets
+- Managers should retreive any employee's tickets
+- Employees should retrieve only THEIR tickets */
 router.get('/:employee', async (req, res) => {
     const token = req.headers.authorization.split(' ')[1];
     const queriedEmployee = req.params.employee;
-    const getTicketResult = await ticketService.viewTicketsByEmployee(token, queriedEmployee);
+    let getTicketResult;
+
+    if(req.query.tid) {
+        getTicketResult = await ticketService.viewEmployeeTicket(token, queriedEmployee, req.query.tid);
+    }
+    else
+        getTicketResult = await ticketService.viewTicketsByEmployee(token, queriedEmployee);
 
     sendTicketRouteResponse(getTicketResult, res);
 });
-
-/* View a single ticket
-- Managers should retrieve ANY ticket from the database
-- Employees should retreive only a ticket that belongs to them. */
-router.get('/:employee/:tid', async (req, res) => {
-    const token = req.headers.authorization.split(' ')[1];
-    const queriedEmployee = req.params.employee;
-    const queriedTicketId = req.params.tid;
-});
-
-// router.get('/tickets', (req, res) => {
-//     const token = req.headers.authorization.split(' ')[1];
-//     const employee = req.query.emp;
-//     const role = req.query.role;
-//     const status = req.query.status;
-//     const ticket_id = req.query.tid;
-
-//     if(role === 'employee') {
-//         if(!status && !ticket_id)
-//             ticketService.viewTicketsByEmployee(token, res);
-//         else if(!status && ticket_id)
-//             ticketService.viewEmployeeTicket(ticket_id, token, res);
-//         else if(status && !ticket_id)
-//             ticketService.viewTicketsByStatus(status, token, res);
-//     }
-//     else if(role === 'manager') {
-//         if(!status && !employee && !ticket_id)
-//             ticketService.viewAllTickets(token, res);
-//         else if(!status && employee && !ticket_id)
-//             ticketService.viewTicketsByEmployee(token, res, employee)
-//         else if(!status && !employee && ticket_id)
-//             ticketService.viewEmployeeTicket(ticket_id, token, res);
-//         else if(status && !employee && !ticket_id)
-//             ticketService.viewTicketsByStatus(status, token, res);
-//     }
-// });
 
 // Update ticket status (managers only)
 router.put('/tickets', (req, res) => {
@@ -117,6 +87,9 @@ function sendTicketRouteResponse(routeResponse, res) {
             break;
         case 'noTicketsFound':
             res.status(404).send({message: 'No tickets found.'});
+            break;
+        case 'noTicketFound':
+            res.status(404).send({message: 'This ticket doesn\'t exist.'});
             break;
         case 'retrievalFailure':
             res.status(400).send({message: 'Unable to retieve tickets.'});

@@ -31,11 +31,11 @@ async function viewAllTickets(token) {
         switch(tokenPayload.role) {
             case 'Manager':
                 tickets = await ticketDAO.retrieveAllTickets();
-                return respondToAPI(tickets);
+                return sendTicketsToAPI(tickets);
             case 'Employee':
                 const employee = tokenPayload.username;
                 tickets = await ticketDAO.retrieveTicketsByEmployee(employee);
-                return respondToAPI(tickets);
+                return sendTicketsToAPI(tickets);
             default:
                 return {status: 'roleUnauthorized'};
         }
@@ -58,12 +58,12 @@ async function viewTicketsByEmployee(token, employee) {
                     return {status: 'userIsManager'};
                 else {
                     tickets = await ticketDAO.retrieveTicketsByEmployee(queriedEmployeeUsername);
-                    return respondToAPI(tickets);
+                    return sendTicketsToAPI(tickets);
                 }
             case 'Employee':
                 if(tokenPayload.username === queriedEmployeeUsername) {
                     tickets = await ticketDAO.retrieveTicketsByEmployee(queriedEmployeeUsername);
-                    return respondToAPI(tickets); 
+                    return sendTicketsToAPI(tickets); 
                 }
                 else
                     return {status: 'empUnauthorized'};
@@ -84,10 +84,10 @@ async function viewTicketsByStatus(token, status) {
         switch(tokenPayload.role) {
             case 'Manager':
                 tickets = await ticketDAO.retrieveTicketsByStatus(queriedStatus);
-                return respondToAPI(tickets);
+                return sendTicketsToAPI(tickets);
             case 'Employee':
                 tickets = await ticketDAO.retrieveEmployeeTicketsByStatus(tokenPayload.username, queriedStatus);
-                return respondToAPI(tickets);
+                return sendTicketsToAPI(tickets);
             default:
                 return {status: 'roleUnauthorized'};
         }
@@ -96,53 +96,35 @@ async function viewTicketsByStatus(token, status) {
         return {status: 'userAuthFailed'};
 }
 
-function viewEmployeeTicket(ticket_id, token) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            const role = payload.role;
-            const emp = payload.username;
+async function viewEmployeeTicket(token, employee, ticket_id) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token);
+    const queriedEmployee = await employeeDAO.getEmployee(employee);
+    const queriedEmployeeUsername = queriedEmployee.Item.username;
+    const queriedEmployeeRole = queriedEmployee.Item.role;
+    let ticket;
 
-            if(role === 'Employee') {
-                ticketDAO.retrieveTicket(ticket_id)
-                    .then((data) => {
-                        const checkedEmp = data.Item.creator_username;
-
-                        if(emp === checkedEmp) {
-                            res.send(data.Item);
-                            logger.info('Ticket was successfully retreived!');
-                        }
-                        else {
-                            res.statusCode = 401;
-                            res.send('You are unauthorized to view this ticket.');
-                            logger.info('Unauthorized attempt to a view ticket.');
-                        }
-                    })
-            }
-            else if(role === 'Manager') {
-                ticketDAO.retrieveTicket(ticket_id)
-                    .then((data) => {
-                        if(data.Item) {
-                            res.send(data.Item);
-                            logger.info('Ticket was successfully retreived!');
-                        }
-                        else {
-                            res.statusCode = 400;
-                            res.send('Ticket not found.');
-                            logger.info('Ticket not found.');
-                        }
-                    })
-            }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to view tickets');
-                logger.info('Unauthorized attempt to view tickets.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.')
-        })
+    if(tokenPayload) {
+        switch(tokenPayload.role) {
+            case 'Manager':
+                if(queriedEmployeeRole === 'Manager')
+                    return {status: 'userIsManager'};
+                else {
+                    ticket = await ticketDAO.retrieveTicket(ticket_id);
+                    return sendTicketToAPI(ticket);
+                }
+            case 'Employee':
+                if(tokenPayload.username === queriedEmployeeUsername) {
+                    ticket = await ticketDAO.retrieveTicket(ticket_id);
+                    return sendTicketToAPI(ticket); 
+                }
+                else
+                    return {status: 'empUnauthorized'};
+            default:
+                return {status: 'roleUnauthorized'};
+        }
+    }
+    else
+        return {status: 'userAuthFailed'};
 }
 
 function updateTicketStatus(token, newStatus, ticket_id, res) {
@@ -186,7 +168,7 @@ function updateTicketStatus(token, newStatus, ticket_id, res) {
 
 /*-------------------- HELPER FUNCTIONS --------------------*/
 
-function respondToAPI(tickets) {
+function sendTicketsToAPI(tickets) {
     if(tickets.Items[0]) {
         return {
             status: 'retrievalSuccess',
@@ -195,6 +177,19 @@ function respondToAPI(tickets) {
     }
     else if(!tickets.Items[0])
         return {status: 'noTicketsFound'};
+    else
+        return {status: 'retreivalFailure'};
+}
+
+function sendTicketToAPI(ticket) {
+    if(ticket.Item) {
+        return {
+            status: 'retrievalSuccess',
+            data: ticket.Item
+        };
+    }
+    else if(!ticket.Item)
+        return {status: 'noTicketFound'};
     else
         return {status: 'retreivalFailure'};
 }

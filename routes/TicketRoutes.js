@@ -3,9 +3,20 @@ const ticketService = require('../services/TicketService');
 const router = Router();
 module.exports = router;
 
+// Create a ticket (employees only)
+router.post('/tickets', (req, res) => {
+    const description = req.body.description;
+    const amount = req.body.amount;
+    const token = req.headers.authorization.split(' ')[1];
+
+    if(description && amount && token) { ticketService.createTicket(description, amount, token, res); }
+    else if(!description) { ticketService.displayErrorMissingReimbItems('description', res); }
+    else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
+});
+
 // View tickets
 router.get('/tickets', (req, res) => {
-    const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
+    const token = req.headers.authorization.split(' ')[1];
     const employee = req.query.emp;
     const role = req.query.role;
     const status = req.query.status;
@@ -31,20 +42,9 @@ router.get('/tickets', (req, res) => {
     }
 });
 
-// Create a ticket (employees only)
-router.post('/tickets', (req, res) => {
-    const description = req.body.description;
-    const amount = req.body.amount;
-    const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
-
-    if(description && amount && token) { ticketService.createTicket(description, amount, token, res); }
-    else if(!description) { ticketService.displayErrorMissingReimbItems('description', res); }
-    else if(!amount) { ticketService.displayErrorMissingReimbItems('amount', res); }
-});
-
 // Update ticket status (managers only)
 router.put('/tickets', (req, res) => {
-    const token = req.headers.authorization.split(' ')[1]; // ['Bearer', '<token>']
+    const token = req.headers.authorization.split(' ')[1];
     const ticket_id = req.body.ticket_id;
     const status = req.body.status;
 

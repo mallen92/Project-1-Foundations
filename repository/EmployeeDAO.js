@@ -22,7 +22,7 @@ function createEmployee(username, password, role = 'Employee') {
 }
 
 // Retrieve an employee
-function retrieveEmployeeByUsername(username) {
+function getEmployee(username) {
     const params = {
         TableName: 'employees',
         Key: { username }
@@ -33,5 +33,5 @@ function retrieveEmployeeByUsername(username) {
 
 module.exports = {
     createEmployee,
-    retrieveEmployeeByUsername
+    getEmployee
 }

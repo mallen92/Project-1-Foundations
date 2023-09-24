@@ -37,7 +37,7 @@ async function viewAllTickets(token) {
                 tickets = await ticketDAO.retrieveTicketsByEmployee(employee);
                 return respondToAPI(tickets);
             default:
-                return {status: 'userUnauthorized'};
+                return {status: 'roleUnauthorized'};
         }
     }
     else
@@ -68,66 +68,32 @@ async function viewTicketsByEmployee(token, employee) {
                 else
                     return {status: 'empUnauthorized'};
             default:
-                return {status: 'generalUnauthorized'};
+                return {status: 'roleUnauthorized'};
         }
     }
     else
         return {status: 'userAuthFailed'};
 }
 
-function viewTicketsByStatus(status, token, res) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            const role = payload.role;
-            const employee = payload.username;
-            const capitalStatus = status.charAt(0).toUpperCase() + status.slice(1);
+async function viewTicketsByStatus(token, status) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token);
+    const queriedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+    let tickets;
 
-            if(role === 'Employee') {
-                ticketDAO.retrieveEmployeeTicketsByStatus(employee, capitalStatus)
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info(`Employee ${employee}'s ${status} tickets were successfully retreived!`);
-                        }
-                        else {
-                            res.statusCode = 400;
-                            res.send('You have no tickets.');
-                            logger.info(`Employee ${employee} has no ${status} tickets to view.`);
-                        }
-                    })
-            }
-            else if(role === "Manager") {
-                ticketDAO.retrieveTicketsByStatus(capitalStatus)
-                    .then((data) => {
-                        if(data.Items[0]) {
-                            res.send(data.Items);
-                            logger.info(`All of the ${status} tickets were successfully retreived!`);
-                        }
-                        else {
-                            res.statusCode = 400;
-                            if(status === "Pending") {
-                                res.send(`There are no ${status} tickets to process`);
-                                logger.info(`There are no ${status} tickets to process.`);
-                            }
-                            else {
-                                res.send(`There are no ${status} tickets to view.`);
-                                logger.info(`There are no ${status} tickets to view.`);
-                            }
-
-                        }
-                    })
-            }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to view tickets');
-                logger.info('Unauthorized attempt to view tickets.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.')
-        })
+    if(tokenPayload) {
+        switch(tokenPayload.role) {
+            case 'Manager':
+                tickets = await ticketDAO.retrieveTicketsByStatus(queriedStatus);
+                return respondToAPI(tickets);
+            case 'Employee':
+                tickets = await ticketDAO.retrieveEmployeeTicketsByStatus(tokenPayload.username, queriedStatus);
+                return respondToAPI(tickets);
+            default:
+                return {status: 'roleUnauthorized'};
+        }
+    }
+    else
+        return {status: 'userAuthFailed'};
 }
 
 function viewEmployeeTicket(ticket_id, token) {
@@ -221,14 +187,16 @@ function updateTicketStatus(token, newStatus, ticket_id, res) {
 /*-------------------- HELPER FUNCTIONS --------------------*/
 
 function respondToAPI(tickets) {
-    if(tickets) {
+    if(tickets.Items[0]) {
         return {
             status: 'retrievalSuccess',
             data: tickets.Items
         };
     }
+    else if(!tickets.Items[0])
+        return {status: 'noTicketsFound'};
     else
-        return 'retreivalFailure';
+        return {status: 'retreivalFailure'};
 }
 
 /*-------------------- END HELPER FUNCTIONS --------------------*/

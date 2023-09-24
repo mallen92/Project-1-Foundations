@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
     else
         getTicketResult = await ticketService.viewAllTickets(token);
 
-    sendTicketRouteResponse(getTicketResult, res);
+    respondToGetTicketQuery(getTicketResult, res);
 });
 
 /* View one OR all of an employee's tickets
@@ -68,19 +68,39 @@ router.get('/:employee', async (req, res) => {
     else
         getTicketResult = await ticketService.viewTicketsByEmployee(token, queriedEmployee);
 
-    sendTicketRouteResponse(getTicketResult, res);
+    respondToGetTicketQuery(getTicketResult, res);
 });
 
 // Update ticket status (managers only)
-router.put('/tickets', (req, res) => {
+router.put('/', async (req, res) => {
     const token = req.headers.authorization.split(' ')[1];
+    const updatedStatus = req.body.status;
     const ticket_id = req.body.ticket_id;
-    const status = req.body.status;
 
-    ticketService.updateTicketStatus(token, status, ticket_id, res);
+    const updateTicketResult = await ticketService.updateTicketStatus(token, updatedStatus, ticket_id);
+
+    switch(updateTicketResult) {
+        case 'ticketAlreadyProcessed':
+            res.status(401).send({message: 'This reimbursement request has already been processed.'});
+            break;
+        case 'statusUpdateSuccess':
+            res.status(200).send({message: 'This reimbursement request was processed successfully!'});
+            break;
+        case 'statusUpdateFailure':
+            res.status(500).send({message: 'The reimbursement request could not be processed.'});
+            break;
+        case 'roleUnauthorized':
+            res.status(401).send({message: 'Only managers can process reimbursement requests.'});
+            break;
+        case 'userAuthFailed':
+            res.status(401).send({message: 'Authentication failed.'});
+            break;
+        default:
+            res.status(500).send({message: 'There was an unexpected error.'});
+    }
 });
 
-function sendTicketRouteResponse(routeResponse, res) {
+function respondToGetTicketQuery(routeResponse, res) {
     switch(routeResponse.status) {
         case 'retrievalSuccess':
             res.status(200).send(routeResponse.data);

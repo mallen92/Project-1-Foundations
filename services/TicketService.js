@@ -127,43 +127,30 @@ async function viewEmployeeTicket(token, employee, ticket_id) {
         return {status: 'userAuthFailed'};
 }
 
-function updateTicketStatus(token, newStatus, ticket_id, res) {
-    jwtUtil.verifyTokenAndReturnPayload(token)
-        .then((payload) => {
-            if(payload.role === 'Manager') {
-                ticketDAO.retrieveEmployeeTicket(ticket_id)
-                    .then((data) => {
-                        const checkedStatus = data.Item.ticket_status;
+async function updateTicketStatus(token, updatedStatus, ticket_id) {
+    const tokenPayload = await jwtUtil.verifyTokenAndReturnPayload(token);
+    const ticketInDB = await ticketDAO.retrieveTicket(ticket_id);
+    const ticketInDBStatus = ticketInDB.Item.ticket_status;
+    let statusUpdateResult;
 
-                        if(checkedStatus === 'Approved' || checkedStatus === 'Denied') {
-                            res.statusCode = 401;
-                            res.send('This ticket cannot be modified because it has already been processed.');
-                            logger.info('There was an attempt to modify the status of a processed ticket.');
-                        }
-                        else {
-                            ticketDAO.updateTicketStatus(ticket_id, newStatus)
-                                .then(() => {
-                                    res.statusCode = 200;
-                                    res.send('Ticket status updated successfully!');
-                                    logger.info('Ticket status updated successfully!');
-                                })   
-                        }
-                    })
-                    .catch((err) => {
-                        res.statusCode = 404;
-                        res.send('The status of this ticket could not be retrieved.')
-                    });
+    if(tokenPayload) {
+        if(tokenPayload.role === 'Manager') {
+            if(ticketInDBStatus === 'Pending') {
+                statusUpdateResult = await ticketDAO.updateTicketStatus(ticket_id, updatedStatus);
+
+                if(statusUpdateResult)
+                    return 'statusUpdateSuccess';
+                else
+                    return 'statusUpdateFailure';
             }
-            else {
-                res.statusCode = 401;
-                res.send('You are unauthorized to modify the status of tickets.');
-                logger.info('There was an unauthorized attempt to modify ticket status.');
-            }
-        })
-        .catch((err) => {
-            res.statusCode = 401;
-            res.send('Failed to authenticate token.')
-        })
+            else
+                return 'ticketAlreadyProcessed';
+        }
+        else
+            return 'roleUnauthorized';
+    }
+    else
+        return 'userAuthFailed';
 }
 
 /*-------------------- HELPER FUNCTIONS --------------------*/
